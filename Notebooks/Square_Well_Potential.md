@@ -6,7 +6,7 @@ By: Salazar Angel and Potosi Quray
 
 #### 1. Solving the Schrodinger Equation
 
-![1om84xti6pbm5](img/1om84xti6pbm5.png)
+![0tmvpxgmtpyp5](img/0tmvpxgmtpyp5.png)
 
 ```wl
 In[]:= f[x_] := Piecewise[{{0, x < 0}, {Subscript[V, 0], 0 <= x <= 2}}];
@@ -15,7 +15,7 @@ In[]:= f[x_] := Piecewise[{{0, x < 0}, {Subscript[V, 0], 0 <= x <= 2}}];
  
 ```
 
-![150wmq57jq5uq](img/150wmq57jq5uq.png)
+![1atgoq728cpnm](img/1atgoq728cpnm.png)
 
 ```wl
 In[]:= 
@@ -27,55 +27,55 @@ The time-independent Schrodinger Equation has different forms in the regions to 
 
 ##### First region x<0:
 
-![1bvct61j8zc2w](img/1bvct61j8zc2w.png)
+![0i3vmb7lm61p0](img/0i3vmb7lm61p0.png)
 
-![03uq3v5va8rrv](img/03uq3v5va8rrv.png)
+![18ko2rr66dty5](img/18ko2rr66dty5.png)
 
 Let k1 =  ![0qhwtbne3dhl4](img/0qhwtbne3dhl4.png) 
 
-![0she2g59srw89](img/0she2g59srw89.png)
+![0u6hmcj1o0lga](img/0u6hmcj1o0lga.png)
 
 ##### Second Region 0<x>a
 
-![0gdrt6xe5te5d](img/0gdrt6xe5te5d.png)
+![1553oi2lsjcvy](img/1553oi2lsjcvy.png)
 
-![14e13ioazyrfx](img/14e13ioazyrfx.png)
+![06pxjbn8omylx](img/06pxjbn8omylx.png)
 
  Let k2 =  ![0l5p7o8yy2dqp](img/0l5p7o8yy2dqp.png) 
 
-![0bv7zw5oluacg](img/0bv7zw5oluacg.png)
+![1u8d3ffk9xa71](img/1u8d3ffk9xa71.png)
 
 ##### Third Region x>a
 
-![0snjj70j2b8pa](img/0snjj70j2b8pa.png)
+![1729c2edbg1xq](img/1729c2edbg1xq.png)
 
-![0vlgjmhuv9h8h](img/0vlgjmhuv9h8h.png)
+![09v7q8i15fn7i](img/09v7q8i15fn7i.png)
 
-![101fwdcmag0ry](img/101fwdcmag0ry.png)
+![1btvv5oodcu8d](img/1btvv5oodcu8d.png)
 
 #### 2. Getting the system of equations of Boundary Conditions
 
 We apply the matching conditions for ψ(x) and ψ'(x), that is at the points x=0 and x=a, four equations in the arbitrary constants A, B, C, D, and F will be obtained: 
 
-![0h62nm67oawi2](img/0h62nm67oawi2.png)
+![1b6meunoov88h](img/1b6meunoov88h.png)
 
 ```wl
 Out[]= A + B == C + D
 ```
 
-![1dlvx72uufi47](img/1dlvx72uufi47.png)
+![08s1c1eh8m5mn](img/08s1c1eh8m5mn.png)
 
 ```wl
 Out[]= D E^(-2 I k2) + C E^(2 I k2) == E^(2 I k1) F
 ```
 
-![0wrls663xwq9u](img/0wrls663xwq9u.png)
+![1pkn15wod9xji](img/1pkn15wod9xji.png)
 
 ```wl
 Out[]= I A k1 - I B k1 == I C k2 - I D k2
 ```
 
-![0kn8q3av2a5aj](img/0kn8q3av2a5aj.png)
+![06zcd1y2rfzob](img/06zcd1y2rfzob.png)
 
 ```wl
 Out[]= -I D E^(-2 I k2)k2 + I C E^(2 I k2)k2 == I E^(2 I k1)F k1
@@ -87,50 +87,50 @@ Out[]= -I D E^(-2 I k2)k2 + I C E^(2 I k2)k2 == I E^(2 I k1)F k1
 In[]:= Solve[{eq1, eq2, eq3, eq4}, {B, C, D, F}]
 ```
 
-![0bpyk3r8onodv](img/0bpyk3r8onodv.png)
+![0cpclx4lf5c53](img/0cpclx4lf5c53.png)
 
 Thus we have: 
 
-![0q2ri8ud62t4x](img/0q2ri8ud62t4x.png)
+![1av3h81hczde8](img/1av3h81hczde8.png)
 
 #### 4. Replacing with the constants found in the piece-wise Schrodinger equation:
 
-![12zjrnl8h6a5o](img/12zjrnl8h6a5o.png)
+![1lnn1wzymmsbx](img/1lnn1wzymmsbx.png)
 
 with:
 
-![0sydjzi1p26bf](img/0sydjzi1p26bf.png)
+![0fz5c4oghkzf1](img/0fz5c4oghkzf1.png)
 
 #### 5. Computing the Transmission and Reflection coefficient
 
 ##### The Reflection coefficient  R of the barrier is: 
 
-![1izohslv7xmjf](img/1izohslv7xmjf.png)
+![0ur4rts1ej2ib](img/0ur4rts1ej2ib.png)
 
-![07lqzzpk7zcum](img/07lqzzpk7zcum.png)
+![0v3zc6ceoheec](img/0v3zc6ceoheec.png)
 
 Turning R expression into a function in order to plot where we are going to change the Energy (En) and Potential (V0).
 
-![1dusu8w0psdln](img/1dusu8w0psdln.png)
+![1wtb8g74vthyb](img/1wtb8g74vthyb.png)
 
 ##### Transmission coefficient T of the barrier is: 
 
-![182hale3rimd7](img/182hale3rimd7.png)
+![02cbosu02hnln](img/02cbosu02hnln.png)
 
-![1w2ja4mup1rnb](img/1w2ja4mup1rnb.png)
+![1dozrpbh6mpl9](img/1dozrpbh6mpl9.png)
 
 Turning T expression into a function in order to plot where we are going to change the Energy (En) and Potential (V0).
 
 #### 6. Plot of T and R with V0=2 and a=2
 
-![1iqpwkmzctg7x](img/1iqpwkmzctg7x.png)
+![09x9xhoi1uh49](img/09x9xhoi1uh49.png)
 
 ```wl
 In[]:= V0 = 2;
  Plot[{Tf[En, 2], Rf[En, 2]}, {En, 0, 10}, PlotStyle -> {Red, Blue}, AxesLabel -> {"Energy", "T and R"}]
 ```
 
-![05zvyfx05aoj1](img/05zvyfx05aoj1.png)
+![09mivfwi0tmh8](img/09mivfwi0tmh8.png)
 
 Now we fix the energy to E=1.1 and we vary values over the potential $V_0:$
 
@@ -141,4 +141,4 @@ In[]:= En = 1.1;
  Plot[{Tf[En, V], Rf[En, V]}, {V, 0, 10}, PlotStyle -> {Red, Blue}, AxesLabel -> {"\!\(\*SubscriptBox[\(V\), \(0\)]\)", "T and R"}]
 ```
 
-![05r0s33g027za](img/05r0s33g027za.png)
+![007f4k88egm54](img/007f4k88egm54.png)
