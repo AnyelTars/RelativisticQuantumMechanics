@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Riccati Scattering Interactive</title>
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 16px; background: #fafafa; }
+    .container { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+    .controls { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .controls h2 { margin: 0 0 8px; font-size: 16px; }
+    .control { margin: 10px 0; }
+    .control label { display: block; font-weight: 600; margin-bottom: 4px; }
+    .control input[type="range"] { width: 100%; }
+    .plots { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+    .plot { background: #fff; padding: 8px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .small { font-size: 12px; color: #555; }
+    .footer { margin-top: 12px; color: #777; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <h2>Parameters</h2>
+      <div class="control">
+        <label for="m">m: <span id="m_val">1.0</span></label>
+        <input type="range" id="m" min="0.5" max="3.0" step="0.1" value="1.0" />
+      </div>
+      <div class="control">
+        <label for="a">a: <span id="a_val">2.0</span></label>
+        <input type="range" id="a" min="0.5" max="8.0" step="0.1" value="2.0" />
+      </div>
+      <div class="control">
+        <label for="b">b: <span id="b_val">2.0</span></label>
+        <input type="range" id="b" min="0.2" max="4.0" step="0.1" value="2.0" />
+      </div>
+      <div class="control">
+        <label for="c">c: <span id="c_val">3.0</span></label>
+        <input type="range" id="c" min="0.5" max="8.0" step="0.1" value="3.0" />
+      </div>
+      <div class="control">
+        <label for="nE">nE (samples): <span id="nE_val">200</span></label>
+        <input type="range" id="nE" min="50" max="600" step="50" value="200" />
+      </div>
+      <div class="control row">
+        <label for="Emin">E min:</label>
+        <input type="number" id="Emin" value="1.0" step="0.5" />
+        <label for="Emax">E max:</label>
+        <input type="number" id="Emax" value="20.0" step="0.5" />
+      </div>
+      <div class="control row small">
+        <span>Domain x in [-10, 10], steps 6000, RK4.</span>
+      </div>
+      <button id="updateBtn">Update Plots</button>
+      <div class="footer">Riccati log-derivative method; reflection R and signed transmission T computed via asymptotic matching at x→-∞ and x→+∞.</div>
+    </div>
+
+    <div class="plots">
+      <div id="rt_plot" class="plot"></div>
+      <div id="V_plot" class="plot"></div>
+    </div>
+  </div>
+
+<script>
+// Simple complex number helpers
+function C(re, im) { return {re: re, im: im}; }
+function cadd(a,b){ return C(a.re+b.re, a.im+b.im); }
+function csub(a,b){ return C(a.re-b.re, a.im-b.im); }
+function cmul(a,b){ return C(a.re*b.re - a.im*b.im, a.re*b.im + a.im*b.re); }
+function cdiv(a,b){ const d=b.re*b.re + b.im*b.im; return C((a.re*b.re + a.im*b.im)/d, (a.im*b.re - a.re*b.im)/d); }
+function cabs(a){ return Math.hypot(a.re, a.im); }
+function cexp(a){ const e=Math.exp(a.re); return C(e*Math.cos(a.im), e*Math.sin(a.im)); }
+function csqrt_real(z){ // sqrt for real z (may be negative -> imag)
+  if (z>=0) return C(Math.sqrt(z), 0);
+  return C(0, Math.sqrt(-z));
+}
+function csqrt(z){ // principal branch sqrt for complex z
+  const r = Math.hypot(z.re, z.im);
+  const t = Math.atan2(z.im, z.re);
+  const s = Math.sqrt(r);
+  const half = t/2;
+  return C(s*Math.cos(half), s*Math.sin(half));
+}
+
+// Model functions
+function V_of_x(a,b,c,x){ return a * Math.exp( b * Math.tanh(c*x) ); }
+function asymptotic_V(a,b){ return {VL: a*Math.exp(-b), VR: a*Math.exp(+b)}; }
+
+function local_k_scalar(E, m, a, b, c, x){
+  const V = V_of_x(a,b,c,x);
+  const z = (E - V)*(E - V) - m*m; // real; may be negative
+  return csqrt_real(z);
+}
+function asymptotic_k(E, m, V_asym){
+  const z = (E - V_asym)*(E - V_asym) - m*m; // real
+  const k = csqrt_real(z);
+  if (Math.abs(k.im) < 1e-14){
+    const base = Math.abs(k.re);
+    const sgn = (E - V_asym) >= 0 ? 1.0 : -1.0;
+    return C(sgn*base, 0);
+  }
+  return k;
+}
+
+function riccati_rhs(E, m, a, b, c, x, y){
+  const k = local_k_scalar(E,m,a,b,c,x);
+  const y2 = cmul(y,y);
+  const kk = cmul(k,k);
+  return csub(C(0,0), cadd(y2, kk)); // -(y^2 + k^2)
+}
+
+function integrate_riccati(E, m, a, b, c, XMIN, XMAX, N_STEPS){
+  const {VL, VR} = asymptotic_V(a,b);
+  let xR = XMAX, xL = XMIN;
+  const h = (xL - xR)/N_STEPS; // negative step
+  const kR = asymptotic_k(E,m,VR);
+  let y = C(0,1); y = cmul(y, kR); // y = i k_R
+  let x = xR;
+  const Y_MAX = 1e6;
+  for (let i=0;i<N_STEPS;i++){
+    const k1 = riccati_rhs(E,m,a,b,c,x, y);
+    const yk1 = cmul(C(h*0.5,0), k1);
+    const k2 = riccati_rhs(E,m,a,b,c,x + 0.5*h, cadd(y, yk1));
+    const yk2 = cmul(C(h*0.5,0), k2);
+    const k3 = riccati_rhs(E,m,a,b,c,x + 0.5*h, cadd(y, yk2));
+    const yk3 = cmul(C(h,0), k3);
+    const k4 = riccati_rhs(E,m,a,b,c,x + h, cadd(y, yk3));
+    const sum = cadd(k1, cadd(cmul(C(2,0),k2), cadd(cmul(C(2,0),k3), k4)));
+    y = cadd(y, cmul(C(h/6,0), sum));
+    x += h;
+    const mag = cabs(y);
+    if (mag > Y_MAX){ y = cmul(y, C(Y_MAX/mag, 0)); }
+  }
+  return {yL: y, VL, VR};
+}
+
+function scattering_coeffs(E, m, a, b, c, XMIN, XMAX, N_STEPS){
+  const {VL, VR} = asymptotic_V(a,b);
+  const zL = (E - VL)*(E - VL) - m*m;
+  if (zL <= 0) return {R:0, T:0};
+  const res = integrate_riccati(E, m, a, b, c, XMIN, XMAX, N_STEPS);
+  const yL = res.yL;
+  const kL = asymptotic_k(E,m,VL);
+  const xL = XMIN;
+  const phase = cexp(C(0, 2*kL.re*xL)); // exp(2 i kL xL); kL is real or imaginary
+  let denom = cadd(yL, C(0, kL.re));
+  const EPS = 1e-12;
+  if (cabs(denom) < EPS) denom = cadd(denom, C(EPS,0));
+  const num = cmul(phase, csub(C(0,kL.re), yL));
+  const R_amp = cdiv(num, denom);
+  const R_prob = cabs(R_amp)**2;
+  const zR = (E - res.VR)*(E - res.VR) - m*m;
+  if (zR <= 0) return {R:1.0, T:0.0};
+  const T_signed = 1.0 - R_prob;
+  return {R: R_prob, T: T_signed};
+}
+
+function computeSpectrum(m,a,b,c,Emin,Emax,nE){
+  const XMIN=-10, XMAX=10, N_STEPS=3000; // half steps to keep JS snappy
+  const E = Array.from({length:nE}, (_,i)=> Emin + (Emax-Emin)*i/(nE-1));
+  const R = new Array(nE), T = new Array(nE);
+  for(let i=0;i<nE;i++){
+    const rt = scattering_coeffs(E[i], m,a,b,c, XMIN,XMAX,N_STEPS);
+    R[i]=rt.R; T[i]=rt.T;
+  }
+  const {VL, VR} = asymptotic_V(a,b);
+  return {E,R,T,VL,VR};
+}
+
+function computePotential(m,a,b,c){
+  const XMIN=-10, XMAX=10; const N=400;
+  const x = Array.from({length:N}, (_,i)=> XMIN + (XMAX-XMIN)*i/(N-1));
+  const V = x.map(xx => V_of_x(a,b,c,xx));
+  return {x,V};
+}
+
+function updatePlots(){
+  const m = parseFloat(document.getElementById('m').value);
+  const a = parseFloat(document.getElementById('a').value);
+  const b = parseFloat(document.getElementById('b').value);
+  const c = parseFloat(document.getElementById('c').value);
+  const nE = parseInt(document.getElementById('nE').value,10);
+  const Emin = parseFloat(document.getElementById('Emin').value);
+  const Emax = parseFloat(document.getElementById('Emax').value);
+  document.getElementById('m_val').textContent = m.toFixed(1);
+  document.getElementById('a_val').textContent = a.toFixed(1);
+  document.getElementById('b_val').textContent = b.toFixed(1);
+  document.getElementById('c_val').textContent = c.toFixed(1);
+  document.getElementById('nE_val').textContent = nE;
+
+  const spec = computeSpectrum(m,a,b,c,Emin,Emax,nE);
+  const pot = computePotential(m,a,b,c);
+
+  const E_sr = spec.VR - m;
+  const E_prop = spec.VR + m;
+
+  // R/T plot
+  const rtData = [
+    {x: spec.E, y: spec.R, type:'scatter', mode:'lines', name:'R(E)', line:{color:'crimson', width:2}},
+    {x: spec.E, y: spec.T, type:'scatter', mode:'lines', name:'T(E)', line:{color:'royalblue', width:2}}
+  ];
+  const rtLayout = {
+    title: 'Reflection and (signed) Transmission',
+    xaxis: {title:'E'}, yaxis: {title:'Coeff / flux ratio'},
+    shapes: [
+      {type:'line', x0:E_sr, x1:E_sr, y0:0, y1:1, xref:'x', yref:'paper', line:{color:'red', width:2, dash:'dash'}},
+      {type:'line', x0:E_prop, x1:E_prop, y0:0, y1:1, xref:'x', yref:'paper', line:{color:'purple', width:2, dash:'dash'}}
+    ], margin:{l:50,r:10,t:40,b:40}
+  };
+  Plotly.newPlot('rt_plot', rtData, rtLayout, {displayModeBar: false});
+
+  // Potential plot
+  const VData = [{x: pot.x, y: pot.V, type:'scatter', mode:'lines', name:'V(x)', line:{color:'black', width:2}}];
+  const VLayout = { title:'Potential V(x)', xaxis:{title:'x'}, yaxis:{title:'V(x)'}, margin:{l:40,r:10,t:40,b:40} };
+  Plotly.newPlot('V_plot', VData, VLayout, {displayModeBar: false});
+}
+
+// Wire up controls
+['m','a','b','c','nE','Emin','Emax'].forEach(id => {
+  document.getElementById(id).addEventListener('input', ()=>{
+    // live update but debounce heavy compute
+    clearTimeout(window._upd);
+    window._upd = setTimeout(updatePlots, 100);
+  });
+});
+
+document.getElementById('updateBtn').addEventListener('click', updatePlots);
+
+// Initial render
+updatePlots();
+</script>
+</body>
+</html>
