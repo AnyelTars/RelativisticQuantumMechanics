@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/KGsolver/__init__.py
+src/KGsolver/cli.py
+src/KGsolver/io.py
+src/KGsolver/plotting.py
+src/KGsolver/potentials.py
+src/KGsolver/riccati.py
+src/KGsolver/spectrum.py
+src/KGsolver.egg-info/PKG-INFO
+src/KGsolver.egg-info/SOURCES.txt
+src/KGsolver.egg-info/dependency_links.txt
+src/KGsolver.egg-info/entry_points.txt
+src/KGsolver.egg-info/requires.txt
+src/KGsolver.egg-info/top_level.txt

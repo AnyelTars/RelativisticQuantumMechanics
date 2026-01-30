@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: KGsolver
+Version: 0.1.0
+Summary: Klein-Gordon scattering (Riccati) for 1D potential barriers
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: matplotlib

@@ -1,0 +1,2 @@
+[console_scripts]
+kgsolver = KGsolver.cli:main
