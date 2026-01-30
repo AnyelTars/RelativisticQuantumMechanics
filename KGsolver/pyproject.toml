@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "KGsolver"
+version = "0.1.0"
+description = "Klein-Gordon scattering (Riccati) for 1D potential barriers"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy", "matplotlib"]
+
+[project.scripts]
+# Esto permitirá que escribas 'kgsolver' en la terminal para correr tu código
+kgsolver = "KGsolver.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
