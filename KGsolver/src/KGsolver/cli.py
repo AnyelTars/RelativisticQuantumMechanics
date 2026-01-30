@@ -5,7 +5,7 @@ from operator import sub
 from pathlib import Path
 
 from .riccati import RiccatiModel
-from .potentials import TanhPotential, expTanhPotential
+from .potentials import TanhPotential, expTanhPotential, woodsSaxonPotential
 from .io import save_csv
 from .plotting import plot_RT, plot_potential
 from .spectrum import conservation_metrics
@@ -55,8 +55,8 @@ def make_model(args) -> RiccatiModel:
     # 2. Lógica para seleccionar el potencial correcto
     #if args.potential == "square":
     #    V, VL, VR, label = square_barrier(V0=args.V0, a=args.a, x0=args.x0)
-    #if args.potential == "woods-saxon":
-    #    V, VL, VR, label = woods_saxon(V0=args.V0, a=args.a, x0=args.x0)
+    if args.potential == "woods-saxon":
+        V, VL, VR, label = woodsSaxonPotential(V0=args.V0, a=args.a, b=args.b)
     if args.potential == "tanh":
         # Usamos V0 como 'a' y args.a como 'b' para mantener consistencia con tus fórmulas
         V, VL, VR, label = TanhPotential(a=args.a, b=args.b)
