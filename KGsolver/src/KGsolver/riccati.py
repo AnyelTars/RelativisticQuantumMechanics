@@ -126,7 +126,12 @@ class RiccatiModel:
         return R_prob, T_prob
 
     def compute_RT_spectrum(self, E_min: float = 0.0, E_max: float = 15.0, nE: int = 1000):
-        """Compute reflection and transmission coefficients over an energy range."""
+        """Compute reflection and transmission coefficients over an energy range.
+        Args:
+            E_min (float): Minimum energy value.
+            E_max (float): Maximum energy value.
+            nE (int): Number of energy points.
+        """
         E_vals  = np.linspace(E_min, E_max, int(nE))
         R_vals  = np.empty_like(E_vals, dtype=float)
         T_vals  = np.empty_like(E_vals, dtype=float)
