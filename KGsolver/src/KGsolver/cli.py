@@ -5,7 +5,7 @@ from operator import sub
 from pathlib import Path
 
 from .riccati import RiccatiModel
-from .potentials import TanhPotential, expTanhPotential, woodsSaxonPotential
+from .potentials import TanhPotential, expTanhPotential, woodsSaxonPotential, cupsPotential
 from .io import save_csv
 from .plotting import plot_RT, plot_potential
 from .spectrum import conservation_metrics
@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
         # Common potential args are handled per command for simplicity
-    POTENTIAL_CHOICES = ["woods-saxon", "tanh", "exp-tanh"]
+    POTENTIAL_CHOICES = ["woods-saxon", "tanh", "exp-tanh","cups-potential"]
 
     run = sub.add_parser("run", help="Compute R,T for a single energy E")
     run.add_argument("--potential", choices=POTENTIAL_CHOICES, required=True)
@@ -60,6 +60,9 @@ def make_model(args) -> RiccatiModel:
     if args.potential == "tanh":
         # Usamos V0 como 'a' y args.a como 'b' para mantener consistencia con tus fórmulas
         V, VL, VR, label = TanhPotential(a=args.a, b=args.b)
+    # cups potential
+    if args.potential == "cups-potential":
+        V, VL, VR, label = cupsPotential(V0=args.V0, a=args.a)
     elif args.potential == "exp-tanh":
         V, VL, VR, label = expTanhPotential(a=args.a, b=args.b, c=args.c)
 
