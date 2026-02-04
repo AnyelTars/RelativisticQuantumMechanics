@@ -63,6 +63,7 @@ def make_model(args) -> RiccatiModel:
     # cups potential
     if args.potential == "cups-potential":
         V, VL, VR, label = cupsPotential(V0=args.V0, a=args.a)
+        
     elif args.potential == "exp-tanh":
         V, VL, VR, label = expTanhPotential(a=args.a, b=args.b, c=args.c)
 
