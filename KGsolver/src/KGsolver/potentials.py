@@ -73,4 +73,26 @@ def woodsSaxonPotential(V0: float, a: float, b: float):
     V_R = 0.0
     label = rf"$V(x) = {V0}\left[ \frac{{\Theta(-x)}}{{1+e^{{- {a}(x+{L})}}}} + \frac{{\Theta(x)}}{{1+e^{{{a}(x-{L})}}}} \right]$"
     return V, V_L, V_R, label
-            
+
+# cups potential (factory)
+def cupsPotential(V0: float, a: float):
+    """Creates the 'cups' potential.
+
+    The potential is symmetric and given by
+        V(x) = V0 * exp(-|x|/a)
+    which is equivalent to the piecewise form:
+        V0 * exp(x/a)  for x < 0
+        V0 * exp(-x/a) for x >= 0
+
+    Returns:
+        (V, V_L, V_R, label)
+    """
+    def V(x: ArrayLike) -> ArrayLike:
+        xarr = np.asarray(x)
+        out = np.where(xarr < 0, V0 * np.exp(xarr / a), V0 * np.exp(-xarr / a))
+        return out
+
+    V_L = 0.0
+    V_R = 0.0
+    label = rf"$V(x) = {V0} e^{{-|x|/{a}}}$"
+    return V, V_L, V_R, label
