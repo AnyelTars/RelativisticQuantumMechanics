@@ -15,7 +15,7 @@ def plot_potential(model, num_points: int = 600, outpath: str | Path | None = No
     plt.xlabel("x")
     plt.ylabel("V(x)")
     plt.grid(True, alpha=0.3)
-
+    plt.show()
     if outpath is not None:
         outpath = Path(outpath)
         outpath.parent.mkdir(parents=True, exist_ok=True)
