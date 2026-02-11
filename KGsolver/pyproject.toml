@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "KGsolver"
 version = "0.1.0"
-Author = "Angel Salazar"
+authors = [{name = "Angel Salazar"}]
 description = "Klein-Gordon scattering (Riccati) for 1D potential barriers"
 readme = "README.md"
 requires-python = ">=3.10"
