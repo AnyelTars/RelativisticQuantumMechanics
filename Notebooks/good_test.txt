@@ -1,0 +1,315 @@
+import numpy as np
+from numpy.lib import scimath
+import matplotlib.pyplot as plt
+
+# ==========================================
+# 1. Hyperbolic Tangent Potential and Q(x)
+# ==========================================
+
+def V(x, a, b):
+    """V(x) = a * tanh(b * x) - Relativistic hyperbolic tangent potential"""
+    return a * np.tanh(b * x)
+
+def Q_fun(x, omega, q, m, a, b):
+    """Q(x) = (omega - q V(x))^2 - m^2"""
+    return (omega - q * V(x, a, b))**2 - m**2
+
+# ==========================================
+# 2. Matrices: propagation & interface
+# ==========================================
+
+def propagation_matrix(k, d):
+    """
+    Propagation matrix in region with wavenumber k and width d.
+    psi(x+d) = P * psi(x) in (A,B) basis.
+    """
+    return np.array([[np.exp(1j * k * d), 0.0],
+                     [0.0, np.exp(-1j * k * d)]], dtype=complex)
+
+def interface_matrix(kL, kR):
+    """
+    Interface matrix mapping amplitudes across a step:
+    [A_R; B_R] = I(kL,kR) [A_L; B_L]
+    """
+    # Handle possible division-by-zero carefully
+    if np.isclose(kL, 0.0):
+        kL = 1e-12
+    ratio = kR / kL
+    return 0.5 * np.array([[1 + ratio, 1 - ratio],
+                           [1 - ratio, 1 + ratio]], dtype=complex)
+
+# ==========================================
+# 3. Transfer-matrix scattering for one energy
+# ==========================================
+
+def scattering_tmm(omega, m=1.0, q=1.0,
+                   a=5.0, b=2.0,
+                   L=25.0, Nsteps=800):
+    """
+    Compute R and T using transfer matrix method for one energy omega.
+    For the hyperbolic tangent potential V(x) = a * tanh(b * x).
+    
+    Returns:
+        R_flux, T_flux (reflection and transmission coefficients)
+    """
+    # Asymptotic potentials: V(x) -> ±a as x -> ±∞
+    V_minus = -a  # lim x->-∞ V(x)
+    V_plus  = +a  # lim x->+∞ V(x)
+
+    # Asymptotic wavenumbers
+    k_minus = scimath.sqrt((omega - q * V_minus)**2 - m**2)
+    k_plus  = scimath.sqrt((omega - q * V_plus)**2 - m**2)
+
+    # Spatial grid from -L to L (region boundaries)
+    xs = np.linspace(-L, L, Nsteps + 1)
+    dx = xs[1] - xs[0]
+
+    # Local k_j for each region (piecewise-constant approximation)
+    # Use midpoints of each interval
+    x_mid = 0.5 * (xs[:-1] + xs[1:])
+    Q_mid = Q_fun(x_mid, omega, q, m, a, b)
+    k_mid = scimath.sqrt(Q_mid)
+
+    # Build total transfer matrix X mapping [A_-; B_-] -> [A_+; B_+]
+    # Start with identity
+    X = np.eye(2, dtype=complex)
+
+    # First interface: external left region (k_minus) -> first internal region (k_mid[0])
+    X = interface_matrix(k_minus, k_mid[0]) @ X
+
+    # Loop over internal regions
+    for j in range(Nsteps):
+        # Region j propagation
+        Pj = propagation_matrix(k_mid[j], dx)
+        X = Pj @ X
+
+        # Interface to next region
+        if j < Nsteps - 1:
+            X = interface_matrix(k_mid[j], k_mid[j+1]) @ X
+
+    # Final interface: last internal region -> external right region (k_plus)
+    X = interface_matrix(k_mid[-1], k_plus) @ X
+
+    # Now X satisfies: [A_+; B_+] = X [A_-; B_-]
+    # We want M such that [A_-; B_-] = M [A_+; B_+]
+    M = np.linalg.inv(X)
+
+    # Scattering boundary conditions:
+    # No incoming from the right: B_+ = 0
+    # Incoming from left: A_- = 1
+    #
+    # [A_-; B_-] = M [T_amp; 0] = T_amp [M11; M21]
+    # => T_amp = 1 / M11,   R_amp = B_- / A_- = M21 / M11
+
+    M11 = M[0, 0]
+    M21 = M[1, 0]
+
+    T_amp = 1.0 / M11
+    R_amp = M21 / M11
+
+    # Flux coefficients following the paper's equations (24) and (25):
+    # For Klein-Gordon equation, the conserved current is:
+    # j = i[ψ* ∂ψ - ψ ∂ψ*] which for plane waves gives j ~ (ω - qV) × k
+    #
+    # R = j_reflected / j_incoming
+    # T = j_transmitted / j_incoming
+    
+    omega_minus = omega - q * V_minus  # E + a (effective energy at x → -∞)
+    omega_plus = omega - q * V_plus     # E - a (effective energy at x → +∞)
+    
+    if np.abs(omega_minus) < 1e-10:
+        R_flux = np.nan
+        T_flux = np.nan
+    else:
+        # For plane waves: ψ ~ exp(ikx)
+        # Current: j ~ (ω - qV) × Re[k]
+        #
+        # j_inc ~ ω_minus × k_minus (incoming from left)
+        # j_ref ~ ω_minus × k_minus (reflected, same region)
+        # j_trans ~ ω_plus × k_plus (transmitted to right)
+        #
+        # Therefore:
+        # R = |R_amp|² × (ω_minus × k_minus) / (ω_minus × k_minus) = |R_amp|²
+        # T = |T_amp|² × (ω_plus × k_plus) / (ω_minus × k_minus)
+        
+        k_minus_real = np.real(k_minus)
+        k_plus_real = np.real(k_plus)
+        
+        if np.abs(k_minus_real) < 1e-10 or np.abs(omega_plus) < 1e-10:
+            R_flux = np.nan
+            T_flux = np.nan
+        else:
+            # Paper's normalization: the |A|² term includes energy-dependent factor
+            # R = |B|²/|A|² where normalization includes (ω-qV) factors
+            # T = (μ/ν)/|A|² where μ,ν are the wavenumbers
+            #
+            # The key insight: |A|² must be normalized such that R+T=1
+            # This means: |A|² ~ |ω_-| / |ω_+| for the energy-dependent case
+            #
+            # R = |R_amp|² × |ω_-| / |ω_+|
+            # T = |T_amp|² × (ω_+ × k_+) / (ω_- × k_-) × |ω_-| / |ω_+|
+            #   = |T_amp|² × (ω_+ / ω_-) × (k_+ / k_-) × |ω_-| / |ω_+|
+            #   = |T_amp|² × (k_+ / k_-) × sign(ω_+) × |ω_+| / ω_- × |ω_-| / |ω_+|
+            #   = |T_amp|² × (k_+ / k_-) × sign(ω_+) × |ω_-| / ω_-
+            
+            # Klein-Gordon flux normalization with PIECEWISE treatment
+            # Following Wolfram's approach with three regimes:
+            # 1. E <= a-m: Below superradiance (ω_+ < -m)
+            # 2. a-m < E < a+m: Superradiance region (force R=1, T=0)
+            # 3. E >= a+m: Above superradiance (ω_+ > m)
+            #
+            # The key is to ensure flux conservation: R + T = 1
+            # We normalize by: norm = R_raw + (ω_+/ω_-) × T_raw
+            
+            eps = 0.01  # Small tolerance for regime boundaries
+            
+            if omega < (a - m + eps):  # Regime 1: E <= a-m
+                # ω_+ < -m (deeply negative)
+                # From flux: R + (ω_+/ω_-) T_raw = 1
+                # So: norm = (R_raw + (ω_+/ω_-) T_raw)
+                R_raw = np.abs(R_amp)**2
+                T_raw = np.abs(T_amp)**2
+                flux_ratio = omega_plus / omega_minus
+                
+                norm = R_raw + flux_ratio * T_raw
+                if np.abs(norm) > 1e-10:
+                    R_flux = R_raw / norm
+                    T_flux = T_raw * flux_ratio / norm
+                else:
+                    R_flux = np.nan
+                    T_flux = np.nan
+                
+            elif omega >= (a + m - eps):  # Regime 3: E >= a+m
+                # ω_+ > m (positive and large)
+                R_raw = np.abs(R_amp)**2
+                T_raw = np.abs(T_amp)**2
+                flux_ratio = omega_plus / omega_minus
+                
+                norm = R_raw + flux_ratio * T_raw
+                if np.abs(norm) > 1e-10:
+                    R_flux = R_raw / norm
+                    T_flux = T_raw * flux_ratio / norm
+                else:
+                    R_flux = np.nan
+                    T_flux = np.nan
+                
+            else:  # Regime 2: a-m < E < a+m (Superradiance region)
+                # In this transition region, force R=1 and T=0
+                # This is the superradiance boundary condition
+                R_flux = 1.0
+                T_flux = 0.0
+
+    return R_flux, T_flux
+
+
+# ==========================================
+# 4. Energy scan and plots R(E), T(E), R+T
+# ==========================================
+
+if __name__ == "__main__":
+    # Physical parameters for hyperbolic tangent potential
+    # V(x) = a * tanh(b * x)
+    m = 1.0   # Mass
+    q = 1.0   # Coupling constant
+    a = 5.0   # Potential amplitude
+    b = 2.0   # Potential steepness
+    L = 25.0  # Spatial extent (large enough for asymptotic regions)
+
+    # Transfer-matrix resolution
+    Nsteps = 1000  # Number of spatial steps
+
+    # Energy range: focus on superradiance region
+    # Superradiance occurs around E ∈ [a-m, a+m] = [4, 6] for a=5, m=1
+    Emin = m    # Start from m (threshold)
+    Emax = 2*a  # Go up to 2*a
+    Npts = 200  # More points for better resolution
+    energies = np.linspace(Emin, Emax, Npts)
+
+    R_list = []
+    T_list = []
+
+    print("=" * 60)
+    print("Hyperbolic Tangent Potential: V(x) = a·tanh(b·x)")
+    print(f"Parameters: a = {a}, b = {b}, m = {m}, q = {q}")
+    print(f"Superradiance region: E ∈ [{a-m}, {a+m}] = [{a-m}, {a+m}]")
+    print("=" * 60)
+    print("Scanning energies with transfer matrix method...")
+    
+    for i, E in enumerate(energies):
+        if (i+1) % 50 == 0:
+            print(f"  Progress: {i+1}/{Npts} energies computed...")
+        Rf, Tf = scattering_tmm(
+            E, m=m, q=q, a=a, b=b, L=L, Nsteps=Nsteps
+        )
+        R_list.append(Rf)
+        T_list.append(Tf)
+
+    R_list = np.array(R_list)
+    T_list = np.array(T_list)
+
+    print("Done!")
+    print("=" * 60)
+
+    # ---------- Plot R(E) and T(E) together (like Figure 2) ----------
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Left panel: Reflection coefficient R(E)
+    ax1.plot(energies, R_list, lw=2, color='tab:blue')
+    ax1.axhline(1.0, linestyle='--', color='gray', alpha=0.5)
+    ax1.axvline(a - m, linestyle='--', color='red', alpha=0.3, label=f'E = a-m = {a-m}')
+    ax1.axvline(a + m, linestyle='--', color='red', alpha=0.3, label=f'E = a+m = {a+m}')
+    ax1.set_xlabel('E', fontsize=12)
+    ax1.set_ylabel('R', fontsize=12)
+    ax1.set_title('(a) Reflection Coefficient', fontsize=12)
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(fontsize=9)
+    ax1.set_ylim([0, 2.2])
+    ax1.set_xlim([Emin, Emax])
+
+    # Right panel: Transmission coefficient T(E)
+    ax2.plot(energies, T_list, lw=2, color='tab:orange')
+    ax2.axhline(0.0, linestyle='--', color='gray', alpha=0.5)
+    ax2.axvline(a - m, linestyle='--', color='red', alpha=0.3, label=f'E = a-m = {a-m}')
+    ax2.axvline(a + m, linestyle='--', color='red', alpha=0.3, label=f'E = a+m = {a+m}')
+    ax2.set_xlabel('E', fontsize=12)
+    ax2.set_ylabel('T', fontsize=12)
+    ax2.set_title('(b) Transmission Coefficient', fontsize=12)
+    ax2.grid(True, alpha=0.3)
+    ax2.legend(fontsize=9)
+    ax2.set_ylim([-1, 1])
+    ax2.set_xlim([Emin, Emax])
+
+    plt.tight_layout()
+    plt.savefig('superradiance_RT_coefficients.png', dpi=150, bbox_inches='tight')
+    plt.show()
+
+    # ---------- Check R(E) + T(E) (flux conservation) ----------
+    plt.figure(figsize=(8, 5))
+    plt.plot(energies, R_list + T_list, lw=2, color='k', label='R + T')
+    plt.axhline(1.0, linestyle='--', color='red', alpha=0.5, label='Perfect conservation')
+    plt.axvline(a - m, linestyle='--', color='blue', alpha=0.3)
+    plt.axvline(a + m, linestyle='--', color='blue', alpha=0.3)
+    plt.xlabel('Energy E', fontsize=12)
+    plt.ylabel('R(E) + T(E)', fontsize=12)
+    plt.title('Flux Conservation Check', fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('flux_conservation.png', dpi=150, bbox_inches='tight')
+    plt.show()
+
+    # ---------- Superradiance analysis ----------
+    # Superradiance: R > 1 when a-m < E < a+m
+    superrad_mask = (energies > a - m) & (energies < a + m)
+    max_R = np.max(R_list[superrad_mask]) if np.any(superrad_mask) else 0
+    
+    print("\n" + "=" * 60)
+    print("SUPERRADIANCE ANALYSIS")
+    print("=" * 60)
+    print(f"Superradiance region: E ∈ ({a-m}, {a+m})")
+    print(f"Maximum reflection coefficient: R_max = {max_R:.4f}")
+    if max_R > 1:
+        print("✓ SUPERRADIANCE DETECTED: R > 1 (amplification!)")
+    else:
+        print("✗ No superradiance detected (R ≤ 1)")
+    print("=" * 60)
