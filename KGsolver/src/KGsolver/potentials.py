@@ -17,9 +17,9 @@ def TanhPotential(a: float, b: float):
     """
     def V(x: ArrayLike) -> ArrayLike:
         xarr = np.asarray(x)
-        return a * np.tanh(b * xarr) -15
-    V_L, V_R = -float(a) - 15, float(a) - 15
-    label = rf"$V(x) = {a} \tanh({b} x) - 15$"
+        return a * np.tanh(b * xarr) 
+    V_L, V_R = -float(a), float(a)
+    label = rf"$V(x) = {a} \tanh({b} x)$"
     return V, V_L, V_R, label
 
 def expTanhPotential(a: float, b: float, c: float):
