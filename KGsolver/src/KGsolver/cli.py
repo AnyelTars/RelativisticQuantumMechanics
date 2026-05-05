@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from operator import sub
 from pathlib import Path
 
 from .riccati import RiccatiModel
@@ -52,20 +51,16 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 def make_model(args) -> RiccatiModel:
-    # 2. Lógica para seleccionar el potencial correcto
-    #if args.potential == "square":
-    #    V, VL, VR, label = square_barrier(V0=args.V0, a=args.a, x0=args.x0)
     if args.potential == "woods-saxon":
         V, VL, VR, label = woodsSaxonPotential(V0=args.V0, a=args.a, b=args.b)
-    if args.potential == "tanh":
-        # Usamos V0 como 'a' y args.a como 'b' para mantener consistencia con tus fórmulas
+    elif args.potential == "tanh":
         V, VL, VR, label = TanhPotential(a=args.a, b=args.b)
-    # cups potential
-    if args.potential == "cups-potential":
+    elif args.potential == "cups-potential":
         V, VL, VR, label = cupsPotential(V0=args.V0, a=args.a)
-        
     elif args.potential == "exp-tanh":
         V, VL, VR, label = expTanhPotential(a=args.a, b=args.b, c=args.c)
+    else:
+        raise ValueError(f"Unsupported potential: {args.potential}")
 
     model = RiccatiModel(
         m=args.m, V=V, V_L=VL, V_R=VR,
