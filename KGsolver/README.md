@@ -245,11 +245,6 @@ This notebook shows how the package was used to:
 
 If you want to understand the practical workflow of the package, this notebook is the best starting point.
 
-There is also an additional notebook:
-
-- `notebooks/Billiard.ipynb`
-
-This notebook is kept with the other notebook material, but it is separate from the `KGsolver` package itself.
 
 ## Notes on the current numerical model
 
